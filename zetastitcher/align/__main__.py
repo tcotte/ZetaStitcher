@@ -9,6 +9,8 @@ import concurrent.futures
 from datetime import timedelta
 
 import json
+from typing import Optional
+
 import yaml
 
 import coloredlogs
@@ -24,7 +26,6 @@ from zetastitcher.fuse import absolute_positions
 from zetastitcher.fuse.__main__ import ABS_MODE_MAXIMUM_SCORE
 
 from zetastitcher.version import __version__
-
 
 logger = logging.getLogger(__name__)
 coloredlogs.install(level='INFO', fmt='%(levelname)s [%(name)s]: %(message)s')
@@ -282,7 +283,8 @@ class Runner(object):
         e = concurrent.futures.ProcessPoolExecutor(max_workers=self.n_of_workers)
 
         for item in self.processing_list:
-            self.fut_q.put(e.submit(worker, item, self.overlap_dict, self.channel, self.max_dz, self.max_dy, self.max_dx))
+            self.fut_q.put(
+                e.submit(worker, item, self.overlap_dict, self.channel, self.max_dz, self.max_dy, self.max_dx))
 
         self.fut_q.put(None)
 
@@ -309,7 +311,13 @@ class Runner(object):
 
             i += 1
 
-    def run(self):
+    def run(self, return_fm: bool = False) -> Optional[FileMatrix]:
+        """
+        Creation of FileMatrix object. This object is the result of a complete alignment of all tiles.
+        :param return_fm: boolean which indicates if the function returns the FileMatrix object (True value) or store
+        it in yaml file (False value)
+        :return: can be FileMatrix object if return_fm is True, None otherwise.
+        """
         out_dir = os.path.dirname(os.path.abspath(self.output_file))
         if not os.access(out_dir, os.W_OK):
             raise ValueError('cannot write to {}'.format(self.output_file))
@@ -337,10 +345,14 @@ class Runner(object):
         absolute_positions.compute_shift_vectors(self.fm.data_frame, sdf)
         absolute_positions.global_optimization(self.fm.data_frame, xcorr_fm)
 
-        self.save_results_to_file()
+        if return_fm:
+            return self.fm
 
-        cols = ['score', 'dz', 'dy', 'dx']
-        print(df[cols].describe())
+        else:
+            self.save_results_to_file()
+
+            cols = ['score', 'dz', 'dy', 'dx']
+            print(df[cols].describe())
 
     @property
     def xcorr_options(self):

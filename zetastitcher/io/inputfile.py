@@ -2,6 +2,8 @@ from pathlib import Path
 
 import numpy as np
 
+from .jpgwrapper import JpgWrapper
+
 try:
     import dcimg
 except ImportError:
@@ -128,6 +130,12 @@ class InputFile(InputFileMixin):
             self.wrapper = TiffWrapper(self.file_path)
             return
         except (ValueError, IndexError, TiffFileError):
+            pass
+
+        try:
+            self.wrapper = JpgWrapper(self.file_path)
+            return
+        except (ValueError, IndexError):
             pass
 
         try:
